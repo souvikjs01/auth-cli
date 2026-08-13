@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"errors"
+
 	"github.com/souvikjs01/auth-cli/internals/models"
 	"gorm.io/gorm"
 )
@@ -67,4 +69,8 @@ func (r *UserRepository) ExistsByEmail(email string) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+func IsNotFound(err error) bool {
+	return errors.Is(err, gorm.ErrRecordNotFound)
 }
