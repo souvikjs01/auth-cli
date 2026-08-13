@@ -3,14 +3,11 @@ package service
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"time"
 
 	"github.com/souvikjs01/auth-cli/internals/models"
 	repository "github.com/souvikjs01/auth-cli/internals/repositories"
 )
-
-var ErrSessionExpired = errors.New("session has expired")
 
 type SessionService struct {
 	sessionRepo    *repository.SessionRepository

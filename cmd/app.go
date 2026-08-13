@@ -1,16 +1,18 @@
-package main
+package cmd
 
 import (
-	"fmt"
 	"log"
 
+	"github.com/souvikjs01/auth-cli/internals/app"
 	"github.com/souvikjs01/auth-cli/internals/config"
 	"github.com/souvikjs01/auth-cli/internals/db"
 	repository "github.com/souvikjs01/auth-cli/internals/repositories"
 	"github.com/souvikjs01/auth-cli/internals/service"
 )
 
-func main() {
+var application *app.App
+
+func initApp() {
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("configuration error: %v", err)
@@ -26,11 +28,21 @@ func main() {
 	}
 
 	userRepo := repository.NewUserRepository(database)
-	_ = service.NewAuthService(
+	sessionRepo := repository.NewSessionRepository(database)
+
+	authService := service.NewAuthService(
 		userRepo,
 		cfg.Auth.MaxLoginAttempts,
 		cfg.Auth.LockoutDuration,
 	)
-	fmt.Println("Database connection successful")
-	fmt.Println("Database migration successful")
+
+	sessionService := service.NewSessionService(
+		sessionRepo,
+		cfg.Auth.SessionTimeout,
+	)
+
+	application = app.NewApp(
+		authService,
+		sessionService,
+	)
 }

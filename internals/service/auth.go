@@ -37,6 +37,11 @@ type RegisterInput struct {
 	Password string
 }
 
+type LoginInput struct {
+	Email    string
+	Password string
+}
+
 func (s *AuthService) Register(input RegisterInput) (*models.User, error) {
 	name := strings.TrimSpace(input.Name)
 	email := strings.ToLower(strings.TrimSpace(input.Email))
@@ -70,11 +75,6 @@ func (s *AuthService) Register(input RegisterInput) (*models.User, error) {
 	}
 
 	return user, nil
-}
-
-type LoginInput struct {
-	Email    string
-	Password string
 }
 
 func (s *AuthService) Login(input LoginInput) (*models.User, error) {
