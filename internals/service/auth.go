@@ -18,12 +18,16 @@ var (
 )
 
 type AuthService struct {
-	userRepo *repository.UserRepository
+	userRepo         *repository.UserRepository
+	maxLoginAttempts int
+	lockoutDuration  time.Duration
 }
 
-func NewAuthService(userRepo *repository.UserRepository) *AuthService {
+func NewAuthService(userRepo *repository.UserRepository, maxLoginAttempts int, lockoutDuration time.Duration) *AuthService {
 	return &AuthService{
-		userRepo: userRepo,
+		userRepo:         userRepo,
+		maxLoginAttempts: maxLoginAttempts,
+		lockoutDuration:  lockoutDuration,
 	}
 }
 
@@ -89,14 +93,41 @@ func (s *AuthService) Login(input LoginInput) (*models.User, error) {
 		return nil, err
 	}
 
-	if user.LockedUntil != nil && time.Now().Before(*user.LockedUntil) {
-		return nil, ErrAccountLocked
+	// Check whether the account is currently locked.
+	if user.LockedUntil != nil {
+		if time.Now().Before(*user.LockedUntil) {
+			return nil, ErrAccountLocked
+		}
+
+		// Lock has expired.
+		user.LockedUntil = nil
+		user.FailedAttempts = 0
+
+		if err := s.userRepo.Update(user); err != nil {
+			return nil, err
+		}
 	}
 
-	if !security.VerifyPassword(input.Password, user.PasswordHash) {
+	// Verify password.
+	if !security.VerifyPassword(
+		input.Password,
+		user.PasswordHash,
+	) {
+		user.FailedAttempts++
+
+		if user.FailedAttempts >= s.maxLoginAttempts {
+			lockedUntil := time.Now().Add(s.lockoutDuration)
+			user.LockedUntil = &lockedUntil
+		}
+
+		if err := s.userRepo.Update(user); err != nil {
+			return nil, err
+		}
+
 		return nil, ErrInvalidCredentials
 	}
 
+	// Successful login.
 	now := time.Now()
 
 	user.FailedAttempts = 0

@@ -6,6 +6,8 @@ import (
 
 	"github.com/souvikjs01/auth-cli/internals/config"
 	"github.com/souvikjs01/auth-cli/internals/db"
+	repository "github.com/souvikjs01/auth-cli/internals/repositories"
+	"github.com/souvikjs01/auth-cli/internals/service"
 )
 
 func main() {
@@ -23,6 +25,12 @@ func main() {
 		log.Fatalf("migration error: %v", err)
 	}
 
+	userRepo := repository.NewUserRepository(database)
+	_ = service.NewAuthService(
+		userRepo,
+		cfg.Auth.MaxLoginAttempts,
+		cfg.Auth.LockoutDuration,
+	)
 	fmt.Println("Database connection successful")
 	fmt.Println("Database migration successful")
 }
