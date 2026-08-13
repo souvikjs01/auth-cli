@@ -14,10 +14,15 @@ func main() {
 		log.Fatalf("configuration error: %v", err)
 	}
 
-	_, err = db.Connect(cfg)
+	database, err := db.Connect(cfg)
 	if err != nil {
 		log.Fatalf("database error: %v", err)
 	}
 
+	if err := db.Migrate(database); err != nil {
+		log.Fatalf("migration error: %v", err)
+	}
+
 	fmt.Println("Database connection successful")
+	fmt.Println("Database migration successful")
 }
