@@ -9,6 +9,7 @@ import (
 type App struct {
 	AuthService    *service.AuthService
 	SessionService *service.SessionService
+	TokenService   *service.TOTPService
 
 	CurrentSessionID string
 	Readline         *readline.Instance
@@ -17,20 +18,22 @@ type App struct {
 func NewApp(
 	authService *service.AuthService,
 	sessionService *service.SessionService,
+	totpService *service.TOTPService,
 ) *App {
 	return &App{
 		AuthService:    authService,
 		SessionService: sessionService,
+		TokenService:   totpService,
 	}
 }
 
 func (a *App) Login(
-	email string,
+	username string,
 	password string,
 ) (*models.User, *models.Session, error) {
 	user, err := a.AuthService.Login(
 		service.LoginInput{
-			Email:    email,
+			Username: username,
 			Password: password,
 		},
 	)

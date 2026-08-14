@@ -41,8 +41,13 @@ func initApp() {
 		cfg.Auth.SessionTimeout,
 	)
 
+	totpService := service.NewTOTPService(
+		cfg.TOTP.Issuer,
+	)
+
 	application = app.NewApp(
 		authService,
 		sessionService,
+		totpService,
 	)
 }

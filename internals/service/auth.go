@@ -11,10 +11,10 @@ import (
 )
 
 var (
-	ErrEmailAlreadyExists = errors.New("email already registered")
-	ErrInvalidInput       = errors.New("invalid input")
-	ErrInvalidCredentials = errors.New("invalid email or password")
-	ErrAccountLocked      = errors.New("account is temporarily locked")
+	ErrUsernameAlreadyExists = errors.New("username already registered")
+	ErrInvalidInput          = errors.New("invalid input")
+	ErrInvalidCredentials    = errors.New("invalid username or password")
+	ErrAccountLocked         = errors.New("account is temporarily locked")
 )
 
 type AuthService struct {
@@ -32,31 +32,29 @@ func NewAuthService(userRepo *repository.UserRepository, maxLoginAttempts int, l
 }
 
 type RegisterInput struct {
-	Name     string
-	Email    string
+	Username string
 	Password string
 }
 
 type LoginInput struct {
-	Email    string
+	Username string
 	Password string
 }
 
 func (s *AuthService) Register(input RegisterInput) (*models.User, error) {
-	name := strings.TrimSpace(input.Name)
-	email := strings.ToLower(strings.TrimSpace(input.Email))
+	username := strings.TrimSpace(input.Username)
 
-	if name == "" || email == "" || input.Password == "" {
+	if username == "" || input.Password == "" {
 		return nil, ErrInvalidInput
 	}
 
-	exists, err := s.userRepo.ExistsByEmail(email)
+	exists, err := s.userRepo.ExistsByUsername(username)
 	if err != nil {
 		return nil, err
 	}
 
 	if exists {
-		return nil, ErrEmailAlreadyExists
+		return nil, ErrUsernameAlreadyExists
 	}
 
 	passwordHash, err := security.HashPassword(input.Password)
@@ -65,8 +63,7 @@ func (s *AuthService) Register(input RegisterInput) (*models.User, error) {
 	}
 
 	user := &models.User{
-		Name:         name,
-		Email:        email,
+		Username:     username,
 		PasswordHash: passwordHash,
 	}
 
@@ -78,13 +75,13 @@ func (s *AuthService) Register(input RegisterInput) (*models.User, error) {
 }
 
 func (s *AuthService) Login(input LoginInput) (*models.User, error) {
-	email := strings.ToLower(strings.TrimSpace(input.Email))
+	username := strings.TrimSpace(input.Username)
 
-	if email == "" || input.Password == "" {
+	if username == "" || input.Password == "" {
 		return nil, ErrInvalidInput
 	}
 
-	user, err := s.userRepo.FindByEmail(email)
+	user, err := s.userRepo.FindByUsername(username)
 	if err != nil {
 		if repository.IsNotFound(err) {
 			return nil, ErrInvalidCredentials

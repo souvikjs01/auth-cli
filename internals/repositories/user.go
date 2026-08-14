@@ -25,11 +25,11 @@ func (r *UserRepository) Create(user *models.User) error {
 	return nil
 }
 
-func (r *UserRepository) FindByEmail(email string) (*models.User, error) {
+func (r *UserRepository) FindByUsername(username string) (*models.User, error) {
 	var user models.User
 
 	err := r.db.
-		Where("email = ?", email).
+		Where("username = ?", username).
 		First(&user).
 		Error
 
@@ -55,12 +55,12 @@ func (r *UserRepository) Update(user *models.User) error {
 	return r.db.Save(user).Error
 }
 
-func (r *UserRepository) ExistsByEmail(email string) (bool, error) {
+func (r *UserRepository) ExistsByUsername(username string) (bool, error) {
 	var count int64
 
 	err := r.db.
 		Model(&models.User{}).
-		Where("email = ?", email).
+		Where("username = ?", username).
 		Count(&count).
 		Error
 

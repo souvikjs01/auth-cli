@@ -1,19 +1,14 @@
 package cmd
 
-import (
-	"fmt"
-)
-
 func promptInput(prompt string) (string, error) {
-	fmt.Print(prompt)
+	saved := shell.Config.Prompt
+	shell.SetPrompt(prompt)
+	defer shell.SetPrompt(saved)
 
 	return shell.Readline()
 }
+
 func promptPassword(prompt string) (string, error) {
-	shell.SetMaskRune('*')
-	defer shell.SetMaskRune(0)
-
-	fmt.Print(prompt)
-
-	return shell.Readline()
+	pw, err := shell.ReadPassword(prompt)
+	return string(pw), err
 }

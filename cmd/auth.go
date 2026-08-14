@@ -7,17 +7,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	loginEmail    string
-	loginPassword string
-)
-
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Login to your account",
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		email, err := promptInput("Email: ")
+		username, err := promptInput("Username: ")
 		if err != nil {
 			return err
 		}
@@ -28,7 +23,7 @@ var loginCmd = &cobra.Command{
 		}
 
 		user, session, err := application.Login(
-			email,
+			username,
 			password,
 		)
 
@@ -36,12 +31,27 @@ var loginCmd = &cobra.Command{
 			return err
 		}
 
+		// Auto-display user details after login (per PRD section 5).
 		fmt.Println("✓ Login successful")
-		fmt.Printf("Welcome, %s\n", user.Name)
-		fmt.Printf(
-			"Session expires: %s\n",
-			session.ExpiresAt.Format("15:04:05"),
+		fmt.Println()
+		fmt.Printf("  Username:           %s\n", user.Username)
+		fmt.Printf("  Registered:         %s\n", user.CreatedAt.Format("2006-01-02 15:04:05"))
+
+		if user.MFAEnabled {
+			fmt.Println("  MFA:                Enabled")
+		} else {
+			fmt.Println("  MFA:                Disabled")
+		}
+
+		fmt.Printf("  Session expires:    %s\n",
+			session.ExpiresAt.Format("2006-01-02 15:04:05"),
 		)
+
+		if user.LastLoginAt != nil {
+			fmt.Printf("  Last login:         %s\n",
+				user.LastLoginAt.Format("2006-01-02 15:04:05"),
+			)
+		}
 
 		return nil
 	},
@@ -52,12 +62,7 @@ var registerCmd = &cobra.Command{
 	Short: "Create a new user account",
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		name, err := promptInput("Name: ")
-		if err != nil {
-			return err
-		}
-
-		email, err := promptInput("Email: ")
+		username, err := promptInput("Username: ")
 		if err != nil {
 			return err
 		}
@@ -78,8 +83,7 @@ var registerCmd = &cobra.Command{
 
 		user, err := application.AuthService.Register(
 			service.RegisterInput{
-				Name:     name,
-				Email:    email,
+				Username: username,
 				Password: password,
 			},
 		)
@@ -90,7 +94,7 @@ var registerCmd = &cobra.Command{
 
 		fmt.Printf(
 			"✓ Account created successfully for %s\n",
-			user.Email,
+			user.Username,
 		)
 
 		return nil
@@ -134,22 +138,23 @@ var whoamiCmd = &cobra.Command{
 
 		user := &session.User
 
-		fmt.Printf("Name: %s\n", user.Name)
-		fmt.Printf("Email: %s\n", user.Email)
+		fmt.Printf("Username:           %s\n", user.Username)
+		fmt.Printf("Registered:         %s\n", user.CreatedAt.Format("2006-01-02 15:04:05"))
+
+		if user.MFAEnabled {
+			fmt.Println("MFA:                Enabled")
+		} else {
+			fmt.Println("MFA:                Disabled")
+		}
+
 		fmt.Printf(
-			"Session expires: %s\n",
+			"Session expires:    %s\n",
 			session.ExpiresAt.Format("2006-01-02 15:04:05"),
 		)
 
-		if user.MFAEnabled {
-			fmt.Println("MFA: Enabled")
-		} else {
-			fmt.Println("MFA: Disabled")
-		}
-
 		if user.LastLoginAt != nil {
 			fmt.Printf(
-				"Last login: %s\n",
+				"Last login:         %s\n",
 				user.LastLoginAt.Format("2006-01-02 15:04:05"),
 			)
 		}
@@ -173,26 +178,89 @@ var logoutCmd = &cobra.Command{
 	},
 }
 
+var enable2FACmd = &cobra.Command{
+	Use:   "enable-2fa",
+	Short: "Enable TOTP-based MFA",
+
+	RunE: func(cmd *cobra.Command, args []string) error {
+		user, err := application.CurrentUser()
+		if err != nil {
+			return err
+		}
+
+		if user.MFAEnabled {
+			return service.ErrMFAAlreadyEnabled
+		}
+
+		key, err := application.TokenService.GenerateKey(
+			user.Username,
+		)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println()
+		fmt.Println("Add this account to Google Authenticator.")
+		fmt.Println()
+		fmt.Println("Secret:")
+		fmt.Println(key.Secret())
+		fmt.Println()
+		fmt.Println("OTP URL:")
+		fmt.Println(key.URL())
+		fmt.Println()
+
+		code, err := promptInput("Enter the 6-digit code: ")
+		if err != nil {
+			return err
+		}
+
+		if !application.TokenService.Verify(
+			code,
+			key.Secret(),
+		) {
+			return service.ErrInvalidTOTP
+		}
+
+		if err := application.AuthService.EnableMFA(
+			user,
+			key.Secret(),
+		); err != nil {
+			return err
+		}
+
+		fmt.Println()
+		fmt.Println("✓ MFA enabled successfully")
+
+		return nil
+	},
+}
+
+var disable2FACmd = &cobra.Command{
+	Use:   "disable-2fa",
+	Short: "Disable TOTP-based MFA",
+
+	RunE: func(cmd *cobra.Command, args []string) error {
+		user, err := application.CurrentUser()
+		if err != nil {
+			return err
+		}
+
+		if err := application.AuthService.DisableMFA(user); err != nil {
+			return err
+		}
+
+		fmt.Println("✓ MFA disabled successfully")
+
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(registerCmd)
 	rootCmd.AddCommand(helpCmd)
 	rootCmd.AddCommand(whoamiCmd)
 	rootCmd.AddCommand(logoutCmd)
-
-	loginCmd.Flags().StringVarP(
-		&loginEmail,
-		"email",
-		"e",
-		"",
-		"Email address",
-	)
-
-	loginCmd.Flags().StringVarP(
-		&loginPassword,
-		"password",
-		"p",
-		"",
-		"Password",
-	)
+	rootCmd.AddCommand(enable2FACmd)
+	rootCmd.AddCommand(disable2FACmd)
 }
