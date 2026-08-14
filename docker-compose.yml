@@ -20,5 +20,23 @@ services:
       timeout: 5s
       retries: 5
 
+  app:
+    build: .
+    container_name: cli-auth-app
+
+    env_file:
+      - .env
+
+    environment:
+      POSTGRES_HOST: postgres
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    # Interactive CLI requires stdin and a TTY.
+    stdin_open: true
+    tty: true
+
 volumes:
   postgres-data:

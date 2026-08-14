@@ -1,3 +1,6 @@
+// Package cmd implements the interactive CLI shell and all user-facing commands.
+// Commands are split into pre-login (register, login, help, exit) and
+// post-login (whoami, enable-2fa, disable-2fa, logout, help, exit).
 package cmd
 
 import (
@@ -7,6 +10,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// loginCmd authenticates a user with username and password.
+// On success it creates a session and displays the user's profile details
+// including registration date, MFA status, session expiration, and last login.
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Login to your account",
@@ -31,7 +37,7 @@ var loginCmd = &cobra.Command{
 			return err
 		}
 
-		// Auto-display user details after login (per PRD section 5).
+		// Auto-display user details after login (PRD section 5).
 		fmt.Println("✓ Login successful")
 		fmt.Println()
 		fmt.Printf("  Username:           %s\n", user.Username)
@@ -57,6 +63,8 @@ var loginCmd = &cobra.Command{
 	},
 }
 
+// registerCmd creates a new user account with username and password.
+// Password confirmation is required to prevent typos.
 var registerCmd = &cobra.Command{
 	Use:   "register",
 	Short: "Create a new user account",
@@ -101,11 +109,13 @@ var registerCmd = &cobra.Command{
 	},
 }
 
+// helpCmd displays available commands based on the current authentication state.
 var helpCmd = &cobra.Command{
 	Use:   "help",
 	Short: "Show available commands",
 
 	Run: func(cmd *cobra.Command, args []string) {
+		// Show different command sets depending on login state.
 		if application.CurrentSessionID == "" {
 			fmt.Println("Available commands:")
 			fmt.Println("  register    Create a new account")
@@ -126,6 +136,7 @@ var helpCmd = &cobra.Command{
 	},
 }
 
+// whoamiCmd displays the current authenticated user's profile details.
 var whoamiCmd = &cobra.Command{
 	Use:   "whoami",
 	Short: "Show current user details",
@@ -163,6 +174,7 @@ var whoamiCmd = &cobra.Command{
 	},
 }
 
+// logoutCmd ends the current session and clears session state.
 var logoutCmd = &cobra.Command{
 	Use:   "logout",
 	Short: "Logout from the current session",
@@ -178,6 +190,9 @@ var logoutCmd = &cobra.Command{
 	},
 }
 
+// enable2FACmd sets up TOTP-based multi-factor authentication.
+// It generates a secret key, displays it for the user to add to an
+// authenticator app, then verifies a code before enabling MFA.
 var enable2FACmd = &cobra.Command{
 	Use:   "enable-2fa",
 	Short: "Enable TOTP-based MFA",
@@ -235,6 +250,7 @@ var enable2FACmd = &cobra.Command{
 	},
 }
 
+// disable2FACmd removes TOTP-based MFA from the user's account.
 var disable2FACmd = &cobra.Command{
 	Use:   "disable-2fa",
 	Short: "Disable TOTP-based MFA",

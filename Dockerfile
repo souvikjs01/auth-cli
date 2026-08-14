@@ -16,6 +16,5 @@ FROM alpine:3.20
 WORKDIR /app
 
 COPY --from=builder /app/auth-cli .
-COPY .env.example .env
 
 ENTRYPOINT ["./auth-cli"]

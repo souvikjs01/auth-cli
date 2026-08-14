@@ -1,3 +1,4 @@
+// Package cmd implements the interactive CLI shell and all user-facing commands.
 package cmd
 
 import (
@@ -10,6 +11,9 @@ import (
 
 var shell *readline.Instance
 
+// StartShell initializes the interactive readline prompt and enters the
+// main command loop. It supports command history and handles interrupt/EOF
+// signals gracefully.
 func StartShell() {
 	var err error
 	shell, err = readline.NewEx(&readline.Config{
@@ -66,6 +70,8 @@ func StartShell() {
 	fmt.Println("Goodbye!")
 }
 
+// handleCommand parses user input and dispatches it to the appropriate
+// cobra subcommand.
 func handleCommand(command string) {
 	args := strings.Fields(command)
 

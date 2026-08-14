@@ -1,3 +1,5 @@
+// Package service implements the core business logic for authentication,
+// session management, and TOTP-based multi-factor authentication.
 package service
 
 import (
@@ -17,12 +19,15 @@ var (
 	ErrAccountLocked         = errors.New("account is temporarily locked")
 )
 
+// AuthService handles user registration and login, including account
+// lockout after repeated failed attempts.
 type AuthService struct {
 	userRepo         *repository.UserRepository
 	maxLoginAttempts int
 	lockoutDuration  time.Duration
 }
 
+// NewAuthService creates an AuthService with configurable lockout settings.
 func NewAuthService(userRepo *repository.UserRepository, maxLoginAttempts int, lockoutDuration time.Duration) *AuthService {
 	return &AuthService{
 		userRepo:         userRepo,
@@ -31,16 +36,20 @@ func NewAuthService(userRepo *repository.UserRepository, maxLoginAttempts int, l
 	}
 }
 
+// RegisterInput holds the fields required to register a new user.
 type RegisterInput struct {
 	Username string
 	Password string
 }
 
+// LoginInput holds the fields required to authenticate a user.
 type LoginInput struct {
 	Username string
 	Password string
 }
 
+// Register creates a new user account. It validates input, checks for
+// duplicate usernames, and stores the password as a bcrypt hash.
 func (s *AuthService) Register(input RegisterInput) (*models.User, error) {
 	username := strings.TrimSpace(input.Username)
 
@@ -74,6 +83,9 @@ func (s *AuthService) Register(input RegisterInput) (*models.User, error) {
 	return user, nil
 }
 
+// Login authenticates a user by username and password. It enforces account
+// lockout after maxLoginAttempts consecutive failures and records the last
+// successful login time.
 func (s *AuthService) Login(input LoginInput) (*models.User, error) {
 	username := strings.TrimSpace(input.Username)
 
@@ -96,7 +108,7 @@ func (s *AuthService) Login(input LoginInput) (*models.User, error) {
 			return nil, ErrAccountLocked
 		}
 
-		// Lock has expired.
+		// Lock has expired — reset the counter.
 		user.LockedUntil = nil
 		user.FailedAttempts = 0
 
@@ -112,6 +124,7 @@ func (s *AuthService) Login(input LoginInput) (*models.User, error) {
 	) {
 		user.FailedAttempts++
 
+		// Lock the account if too many failed attempts.
 		if user.FailedAttempts >= s.maxLoginAttempts {
 			lockedUntil := time.Now().Add(s.lockoutDuration)
 			user.LockedUntil = &lockedUntil
@@ -124,7 +137,7 @@ func (s *AuthService) Login(input LoginInput) (*models.User, error) {
 		return nil, ErrInvalidCredentials
 	}
 
-	// Successful login.
+	// Successful login — reset failed attempts and record timestamp.
 	now := time.Now()
 
 	user.FailedAttempts = 0
