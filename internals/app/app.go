@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/chzyer/readline"
 	"github.com/souvikjs01/auth-cli/internals/models"
 	"github.com/souvikjs01/auth-cli/internals/service"
 )
@@ -10,6 +11,7 @@ type App struct {
 	SessionService *service.SessionService
 
 	CurrentSessionID string
+	Readline         *readline.Instance
 }
 
 func NewApp(
@@ -47,7 +49,7 @@ func (a *App) Login(
 	return user, session, nil
 }
 
-func (a *App) CurrentUser() (*models.User, error) {
+func (a *App) CurrentSession() (*models.Session, error) {
 	if a.CurrentSessionID == "" {
 		return nil, service.ErrNotAuthenticated
 	}
@@ -58,6 +60,15 @@ func (a *App) CurrentUser() (*models.User, error) {
 
 	if err != nil {
 		a.CurrentSessionID = ""
+		return nil, err
+	}
+
+	return session, nil
+}
+
+func (a *App) CurrentUser() (*models.User, error) {
+	session, err := a.CurrentSession()
+	if err != nil {
 		return nil, err
 	}
 
